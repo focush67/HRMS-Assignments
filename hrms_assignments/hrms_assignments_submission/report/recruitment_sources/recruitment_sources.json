@@ -1,0 +1,31 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2025-08-31 11:49:05.339834",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "The Testing Company Private Limited",
+ "letterhead": null,
+ "modified": "2025-08-31 12:14:11.533401",
+ "modified_by": "Administrator",
+ "module": "HRMS Assignments Submission",
+ "name": "Recruitment Sources",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Job Applicant",
+ "report_name": "Recruitment Sources",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "Employee Self Service"
+  }
+ ],
+ "timeout": 0
+}
