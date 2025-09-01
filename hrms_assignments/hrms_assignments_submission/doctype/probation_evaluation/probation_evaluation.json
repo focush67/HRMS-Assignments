@@ -1,0 +1,268 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:employee",
+ "creation": "2025-08-31 19:29:10.946848",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_ljbp",
+  "amended_from",
+  "employee",
+  "employee_name",
+  "department",
+  "column_break_yglp",
+  "probation_ends_on",
+  "reporting_manager",
+  "designation",
+  "self_evaluation_tab",
+  "training_based_evaluation_section",
+  "theoretical_se",
+  "column_break_btwk",
+  "practical_se",
+  "job_and_performance_based_evaluation_section",
+  "quality_of_work_se",
+  "capacity_to_develop_se",
+  "column_break_3mvg",
+  "team_work_abilities_se",
+  "interpersonal_skills_se",
+  "manager_evaluation_tab",
+  "training_based_evaluation_as_per_manager_section",
+  "theoretical_rm",
+  "column_break_leid",
+  "practical_rm",
+  "section_break_ekyc",
+  "criteria_legend",
+  "section_break_b55i",
+  "quality_of_work_rm",
+  "capacity_to_develop_rm",
+  "column_break_uptm",
+  "team_work_abilities_rm",
+  "interpersonal_skills_rm",
+  "section_break_hlke",
+  "final_verdict"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_ljbp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Probation Evaluation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name"
+  },
+  {
+   "fetch_from": "employee.custom_probation_end_date",
+   "fetch_if_empty": 1,
+   "fieldname": "probation_ends_on",
+   "fieldtype": "Date",
+   "label": "Probation Ends On"
+  },
+  {
+   "fetch_from": "employee.reports_to",
+   "fieldname": "reporting_manager",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Reporting Manager",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Designation",
+   "options": "Designation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "self_evaluation_tab",
+   "fieldtype": "Tab Break",
+   "label": "Self Evaluation"
+  },
+  {
+   "fieldname": "column_break_yglp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "All scores must be out of 10",
+   "fieldname": "training_based_evaluation_section",
+   "fieldtype": "Section Break",
+   "label": "Training Based Evaluation"
+  },
+  {
+   "fieldname": "theoretical_se",
+   "fieldtype": "Int",
+   "label": "Theoretical",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "practical_se",
+   "fieldtype": "Int",
+   "label": "Practical"
+  },
+  {
+   "fieldname": "column_break_btwk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "job_and_performance_based_evaluation_section",
+   "fieldtype": "Section Break",
+   "label": "Job and Performance Based Evaluation"
+  },
+  {
+   "fieldname": "quality_of_work_se",
+   "fieldtype": "Int",
+   "label": "Quality of Work"
+  },
+  {
+   "fieldname": "team_work_abilities_se",
+   "fieldtype": "Int",
+   "label": "Team Work Abilities"
+  },
+  {
+   "fieldname": "interpersonal_skills_se",
+   "fieldtype": "Int",
+   "label": "Interpersonal Skills"
+  },
+  {
+   "fieldname": "column_break_3mvg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "capacity_to_develop_se",
+   "fieldtype": "Int",
+   "label": "Capacity to Develop"
+  },
+  {
+   "fieldname": "manager_evaluation_tab",
+   "fieldtype": "Tab Break",
+   "label": "Manager Evaluation"
+  },
+  {
+   "fieldname": "quality_of_work_rm",
+   "fieldtype": "Int",
+   "label": "Quality of Work"
+  },
+  {
+   "fieldname": "capacity_to_develop_rm",
+   "fieldtype": "Int",
+   "label": "Capacity to Develop"
+  },
+  {
+   "fieldname": "column_break_uptm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "team_work_abilities_rm",
+   "fieldtype": "Int",
+   "label": "Team Work Abilities"
+  },
+  {
+   "fieldname": "interpersonal_skills_rm",
+   "fieldtype": "Int",
+   "label": "Interpersonal Skills"
+  },
+  {
+   "fieldname": "theoretical_rm",
+   "fieldtype": "Int",
+   "label": "Theoretical"
+  },
+  {
+   "fieldname": "column_break_leid",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "practical_rm",
+   "fieldtype": "Int",
+   "label": "Practical"
+  },
+  {
+   "description": "All scores must be out of 10",
+   "fieldname": "training_based_evaluation_as_per_manager_section",
+   "fieldtype": "Section Break",
+   "label": "Training Based Evaluation (as per Manager)"
+  },
+  {
+   "fieldname": "section_break_b55i",
+   "fieldtype": "Section Break",
+   "label": "Job and Performance Based Evaluation (as per Manager)"
+  },
+  {
+   "fieldname": "section_break_hlke",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "final_verdict",
+   "fieldtype": "Select",
+   "label": "Final Verdict",
+   "mandatory_depends_on": "eval:(in_list([\"Awaiting Manager Evaluation\", \"Completed\"], doc.workflow_state))",
+   "options": "\nPassed\nFailed"
+  },
+  {
+   "fieldname": "section_break_ekyc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "criteria_legend",
+   "fieldtype": "HTML",
+   "label": "Criteria Legend"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-01 15:56:37.557459",
+ "modified_by": "Administrator",
+ "module": "HRMS Assignments Submission",
+ "name": "Probation Evaluation",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -34,6 +34,21 @@ Arguments are passed as **None**, causing errors.
 
 ---
 
+## Assignment 2: Employee Lifecycle
+
+### **Objectives**
+
+- **Configuring Employee doctype to handle lifecycle events**
+
+  - **Flow:** `Joining -> Probation -> Confirmation -> Exit`
+  - **Automation:** Confirmation leads to auto-updation of employee status. Exiting leads to auto generation of Experience Letter PDF, which attaches to the employee itself.
+
+- **Implemented following features**
+
+  - **Probation Evaluation** Created a new doctype called Probation Evaluation, which will serve as the point from where the employee master is updated based on the status.If the total average score around the parameters >= 70%, only then is the employee considered 'Confirmed'.
+
+  - **Updating Employee based on Probation** When the Probation is submitted, based on the status, the new custom field inside of Employee (Is Under Probation) in unchecked, marking the current employee as a normal full-time employee. Also when a new employee is created, they are by default under probation with a time period of 60 days, which can be changed if need be.
+
 ### 📄 License
 
 **MIT**
