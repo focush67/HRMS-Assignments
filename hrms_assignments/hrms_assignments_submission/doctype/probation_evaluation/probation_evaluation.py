@@ -1,10 +1,10 @@
 import frappe
-import re
 from frappe.model.document import Document
-from frappe.utils import getdate, add_months, formatdate, add_days
-import frappe.utils
+from frappe.utils import getdate, add_days, nowdate
 
 STATE_OPEN = "Open"
+MAX_EXTENSION = 30
+MIN_REASON_CHARS = 20
 STATE_AWAITING_SET = {"Awaiting Manager Evaluation", "Waiting Manager Evaluation"}
 STATE_COMPLETED = "Completed"
 
@@ -29,12 +29,17 @@ RM_FIELDS = [
 
 class ProbationEvaluation(Document):
     def validate(self):
+        if getattr(self, "final_verdict", None) == "Extended":
+            return None
         self._enforce_workflow_field_rules()
         if self.workflow_state == "Completed":
             self._calculate_final_verdict()
 
     def before_submit(self):
-        self._calculate_final_verdict()
+        if getattr(self, "final_verdict", None) == "Extended":
+            return None
+        if hasattr(self, "_calculate_final_verdict"):
+            self._calculate_final_verdict()
 
     def on_submit(self):
         verdict = self.final_verdict
@@ -53,7 +58,7 @@ class ProbationEvaluation(Document):
     def _update_employee_as_cleared(self):
         if self.final_verdict == "Failed":
             return None
-        employee_doc = frappe.get_doc("Employee", self.name)
+        employee_doc = frappe.get_doc("Employee", self.employee)
         employee_doc.custom_is_under_probation = 0
         employee_doc.custom_employment_status = "Confirmed"
         employee_doc.final_confirmation_date = frappe.utils.today()
@@ -115,3 +120,81 @@ class ProbationEvaluation(Document):
 
         self.final_verdict = "Passed" if percent >= 70 else "Failed"
         frappe.msgprint(f"Final Verdict: {self.final_verdict} ({percent:.2f}%)")
+
+
+@frappe.whitelist()
+def extend_probation_conditionally(evaluation, days, reason):
+    if not evaluation:
+        frappe.throw("Missing Evaluation ID")
+    pe = frappe.get_doc("Probation Evaluation", evaluation)
+    if pe.docstatus != 0:
+        frappe.thow("Extension can only happen for Draft Probation Evaluations")
+    if not pe.employee:
+        frappe.throw("Evaluation is not linked to any Employee")
+
+    emp = frappe.get_doc("Employee", pe.employee)
+    rm_user = (
+        frappe.db.get_value("Employee", emp.get("reports_to"), "user_id")
+        if emp.get("reports_to")
+        else None
+    )
+
+    if frappe.session.user not in set(filter(None, [rm_user, "Administrator"])):
+        frappe.throw(
+            f"Only the Reporting Manager or Administrator can extend probation. Got {frappe.session.user}"
+        )
+
+    try:
+        days = int(days)
+    except Exception as e:
+        frappe.throw("Extension days must be a valid integer", str(e))
+
+    if days < 7 or days > MAX_EXTENSION:
+        frappe.throw(
+            f"Extension cannot exceed {MAX_EXTENSION} days, and cannot be lesser than a week"
+        )
+
+    reason = (reason or "").strip()
+    if len(reason) < MIN_REASON_CHARS:
+        frappe.throw(f"Please provide a detailed reason for extension of Probation")
+
+    base_end = emp.get("custom_probation_end_date")
+    if not base_end:
+        frappe.throw(
+            "Employee does not have Probation End Date set in its Employee master. Please first set it and then try again later"
+        )
+
+    new_end = add_days(getdate(base_end), days)
+    emp.db_set("custom_probation_end_date", new_end, update_modified=True)
+    frappe.get_doc(
+        {
+            "doctype": "Comment",
+            "comment_type": "Comment",
+            "reference_doctype": "Employee",
+            "reference_name": emp.name,
+            "content": f"Probation extended by <b>{days} days</b> (from {frappe.utils.formatdate(base_end)} to {frappe.utils.formatdate(new_end)}).<br>"
+            f"Reason: {frappe.utils.escape_html(reason)}<br>"
+            f"By: {frappe.session.user} on {frappe.utils.formatdate(nowdate())}",
+        }
+    ).insert(ignore_permissions=True)
+
+    if "extension_days" in pe.as_dict():
+        pe.extension_days = days
+    if "extension_reason" in pe.as_dict():
+        pe.extension_reason = reason
+
+    pe.final_verdict = "Extended"
+    if "workflow_state" in pe.as_dict():
+        pe.workflow_state = "Completed"
+
+    pe.flags.ignore_validate_update_after_submit = True
+    pe.save()
+    pe.submit()
+
+    return {
+        "employee": emp.name,
+        "old_end": str(getdate(base_end)),
+        "new_end": str(new_end),
+        "evaluation": pe.name,
+        "verdict": "Extended",
+    }

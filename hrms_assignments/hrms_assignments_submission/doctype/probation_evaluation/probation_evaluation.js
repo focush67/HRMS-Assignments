@@ -39,12 +39,66 @@ function setEmployeeUnderProbationQuery(frm) {
   });
 }
 
+function setupProbationExtension(frm) {
+  if (frm.doc.docstatus === 1) return;
+  frm.add_custom_button("Extend Probation", () => {
+    const d = new frappe.ui.Dialog({
+      title: "Extend Probation",
+      fields: [
+        {
+          fieldtype: "Int",
+          fieldname: "days",
+          label: "Extension (days, max 30)",
+          reqd: 1,
+        },
+        {
+          fieldtype: "Small Text",
+          fieldname: "reason",
+          label: "Reason for Extension (min 20 chars)",
+          reqd: 1,
+        },
+      ],
+      primary_action_label: "Extend & Submit",
+      primary_action: (values) => {
+        d.hide();
+        frappe.call({
+          method:
+            "hrms_assignments.hrms_assignments_submission.doctype.probation_evaluation.probation_evaluation.extend_probation_conditionally",
+          args: {
+            evaluation: frm.doc.name,
+            days: values.days,
+            reason: values.reason,
+          },
+          callback: (r) => {
+            if (r.message) {
+              frappe.msgprint(
+                __(
+                  `Probation extended to <b>${frappe.datetime.str_to_user(
+                    r.message.new_end
+                  )}</b>. Evaluation submitted with verdict <b>Extended</b>.`
+                )
+              );
+              frm.reload_doc();
+            }
+          },
+          error: () => {
+            d.show();
+          },
+        });
+      },
+    });
+    d.show();
+  });
+}
+
 frappe.ui.form.on("Probation Evaluation", {
   onload(frm) {
     setEmployeeUnderProbationQuery(frm);
+    setupProbationExtension(frm);
   },
   refresh(frm) {
     setEmployeeUnderProbationQuery(frm);
+    setupProbationExtension(frm);
     renderLegend(frm);
   },
 });

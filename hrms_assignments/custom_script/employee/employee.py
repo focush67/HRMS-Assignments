@@ -4,6 +4,7 @@ from frappe.utils import getdate, add_months, formatdate, add_days, nowdate, cin
 
 KEYWORDS = ("end", "probation", "early")
 BYPASSERS = "Bypasser"
+EXEMPTED_GRADES = ["B1"]
 
 
 def compute_probation_end_date(joining_date, probation_period):
@@ -25,6 +26,14 @@ def compute_probation_end_date(joining_date, probation_period):
     else:
         end_date = str(add_days(base, qty))
     return {"end_date": end_date, "end_date_formatted": formatdate(end_date)}
+
+
+def _has_submitted_probation_evaluation(emp_name=None):
+    if not emp_name:
+        return False
+    return bool(
+        frappe.db.exists("Probation Evaluation", {"empoyee": emp_name, "docstatus": 1})
+    )
 
 
 def _safe_date(d):
@@ -109,6 +118,10 @@ def _has_rm_early_end_comment(emp_doc):
     return False
 
 
+def _is_exempted(emp_doc):
+    return ((emp_doc.get("grade") or "").strip().upper()) in EXEMPTED_GRADES
+
+
 @frappe.whitelist()
 def calculate_probation_end_date(employee=None):
     if not employee:
@@ -180,6 +193,16 @@ def validate_probation_guards(doc, method=None):
         return None
 
     has_manager_override = _has_rm_early_end_comment(doc)
+    if stage_changed_to_confirmed:
+        if not _is_exempted(doc):
+            has_evaluation = _has_submitted_probation_evaluation(doc.name)
+            if not has_evaluation:
+                frappe.throw(
+                    "Cannot confirm employee without a <b>submitted Probation Evaluation</b>. "
+                    "Please ensure the evaluation is created and submitted.",
+                    title="Confirmation Blocked",
+                )
+
     if stage_changed_to_confirmed and not has_manager_override:
         frappe.throw(
             f"Cannot mark employee <b>{doc.employee_name or doc.name}</b> as <b>Confirmed</b> "

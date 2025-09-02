@@ -23,4 +23,14 @@ frappe.ui.form.on("Employee", {
       frm.set_value("custom_probation_end_date", response.end_date);
     }
   },
+
+  validate(frm) {
+    if (frm.doc.custom_is_under_probation) {
+      if (frm.doc.custom_employment_status !== "Probation") {
+        frappe.throw(
+          "Not allowed to change the employment status from Probation to anything else while the employee is under probation"
+        );
+      }
+    }
+  },
 });
