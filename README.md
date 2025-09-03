@@ -49,6 +49,12 @@ Arguments are passed as **None**, causing errors.
 
   - **Updating Employee based on Probation** When the Probation is submitted, based on the status, the new custom field inside of Employee (Is Under Probation) in unchecked, marking the current employee as a normal full-time employee. Also when a new employee is created, they are by default under probation with a time period of 60 days, which can be changed if need be.
 
+  - **Triggering Separation Upon Failed Probation** When the probation fails, the Employee Separation is auto-triggered and upon its completion, employee is marked as Left in the master (this part is done through a background job; hooks could not track the change the Employee Separation document from Pending to Completed, possibly due to the core HRMS using direct DB manipulation and preventing hooks triggering)
+
+  - **Giving Provision of Employee Resignation** Employees can fill their resignation forms for initiating their exit voluntarily. This goes through the same process as above, except now the initiation happens when the Employee Resignation is Submitted.
+
+  - **Experience Letter Generation Upon Exit** When the employee is marked as Left, the Experience Letter is generated and auto-attached to the said employee, stating the essential information like tenure, department and other employee related detail in a professional format.
+
 ### 📄 License
 
 **MIT**
