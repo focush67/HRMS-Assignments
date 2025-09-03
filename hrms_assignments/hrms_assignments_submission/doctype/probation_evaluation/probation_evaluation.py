@@ -44,8 +44,13 @@ class ProbationEvaluation(Document):
     def on_submit(self):
         verdict = self.final_verdict
         if verdict == "Passed":
-            print("Need to update employee")
             self._update_employee_as_cleared()
+        elif verdict == "Failed":
+            sep_name = self._initiate_employee_separation()
+            if sep_name:
+                frappe.msgprint(
+                    f"Employee Separation Initiated: {sep_name}. Please fill relevant information and complete offboarding"
+                )
 
     def _label_for(self, fieldname):
         df = self.meta.get_field(fieldname)
@@ -63,6 +68,45 @@ class ProbationEvaluation(Document):
         employee_doc.custom_employment_status = "Confirmed"
         employee_doc.final_confirmation_date = frappe.utils.today()
         employee_doc.save()
+
+    def _initiate_employee_separation(self):
+        if not self.employee:
+            frappe.throw("Employee is required for initiating separation")
+        existing = None
+        existing = frappe.get_all(
+            "Employee Separation",
+            filters={
+                "employee": self.employee,
+                "docstatus": ["!=", 2],
+            },
+            fields=["name"],
+            limit=1,
+        )
+
+        if existing:
+            return existing[0]["name"]
+
+        emp = frappe.get_doc("Employee", self.employee)
+        today = frappe.utils.today()
+        payload = {
+            "doctype": "Employee Separation",
+            "employee": emp.name,
+            "boarding_begins_on": today,
+            "exit_interview": f"Auto-initiated on probation failure from Evaluation {self.name}.",
+        }
+
+        sep = frappe.get_doc(payload).insert(ignore_permissions=True)
+        frappe.get_doc(
+            {
+                "doctype": "Comment",
+                "comment_type": "Comment",
+                "reference_doctype": "Employee Separation",
+                "reference_name": sep.name,
+                "content": f"Created from Probation Evaluation <b>{self.name}</b> (verdict <b>Failed</b>).",
+            }
+        ).insert(ignore_permissions=True)
+
+        return sep.name
 
     def _find_out_of_range(self, fields, lo: int = 1, hi: int = 10):
         bad = []

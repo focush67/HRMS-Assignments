@@ -1,0 +1,171 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-03 10:50:29.375089",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "amended_from",
+  "employee",
+  "employee_name",
+  "department",
+  "column_break_kxqu",
+  "company",
+  "resignation_letter_date",
+  "notice_period",
+  "employee_grade",
+  "section_break_qzas",
+  "proposed_last_working_date",
+  "reason",
+  "approver",
+  "column_break_ngmc",
+  "acceptance_date",
+  "status",
+  "employee_separation"
+ ],
+ "fields": [
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Employee Resignation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.grade",
+   "fieldname": "employee_grade",
+   "fieldtype": "Link",
+   "label": "Employee Grade",
+   "options": "Employee Grade",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "default": "Today",
+   "fieldname": "resignation_letter_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Resignation Letter Date",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.notice_number_of_days",
+   "fieldname": "notice_period",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Notice Period",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "proposed_last_working_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Proposed Last Working Date"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Reason",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.reports_to",
+   "fieldname": "approver",
+   "fieldtype": "Link",
+   "label": "Approver",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "acceptance_date",
+   "fieldtype": "Date",
+   "label": "Acceptance Date",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPending\nCompleted"
+  },
+  {
+   "fieldname": "employee_separation",
+   "fieldtype": "Link",
+   "label": "Employee Separation",
+   "options": "Employee Separation"
+  },
+  {
+   "fieldname": "column_break_kxqu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_qzas",
+   "fieldtype": "Section Break",
+   "label": "Relieving Details and Status"
+  },
+  {
+   "fieldname": "column_break_ngmc",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-03 12:36:13.997872",
+ "modified_by": "Administrator",
+ "module": "HRMS Assignments Submission",
+ "name": "Employee Resignation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

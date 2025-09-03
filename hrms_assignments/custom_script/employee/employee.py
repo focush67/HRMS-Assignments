@@ -1,10 +1,99 @@
 import frappe
 import re
 from frappe.utils import getdate, add_months, formatdate, add_days, nowdate, cint
+from frappe.utils.file_manager import save_file
+from frappe.utils.pdf import get_pdf
 
 KEYWORDS = ("end", "probation", "early")
 BYPASSERS = "Bypasser"
 EXEMPTED_GRADES = ["B1"]
+RESUME_MARKER = "Auto-generated Experience Letter PDF"
+
+
+def _already_attached(employee_name=None):
+    return bool(
+        frappe.get_all(
+            "File",
+            filters={
+                "attached_to_doctype": "Employee",
+                "attached_to_name": employee_name,
+                "file_name": ("like", f"Experience_Letter_{employee_name}%"),
+            },
+            limit=1,
+        )
+    )
+
+
+def generate_and_attach_experience_letter(employee_name=None, letter_date=None):
+    try:
+        emp = frappe.get_doc("Employee", employee_name)
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            f"Experience Letter: Employee not found {employee_name}",
+        )
+        return None
+
+    if _already_attached(emp.name):
+        return None
+
+    if not getattr(emp, "relieving_date", None):
+        emp.relieving_date = getdate(letter_date or nowdate())
+
+    try:
+        html = frappe.get_print(
+            doctype="Employee",
+            name=emp.name,
+            print_format="Experience Letter",
+            doc=emp,
+            no_letterhead=0,
+        )
+
+        letterhead_html = ""
+        lh_name = None
+        if emp.company:
+            lh_name = frappe.db.get_value("Company", emp.company, "default_letter_head")
+        if not lh_name:
+            lh_name = frappe.db.get_value("Letter Head", {"is_default": 1}, "name")
+        if not lh_name:
+            lh_row = frappe.get_all("Letter Head", fields=["name"], limit=1)
+            lh_name = lh_row[0]["name"] if lh_row else None
+        if lh_name:
+            letterhead_html = (
+                frappe.db.get_value("Letter Head", lh_name, "content") or ""
+            )
+
+        if "{{ letterhead" in html:
+            html = html.replace(
+                "{% if not no_letterhead %}{{ letterhead }}{% endif %}", letterhead_html
+            ).replace("{{ letterhead }}", letterhead_html)
+        elif letterhead_html:
+            html = f"{letterhead_html}{html}"
+
+        pdf_bytes = get_pdf(html)
+        fname = f"Experience_Letter_{employee_name}.pdf"
+        file_doc = save_file(fname, pdf_bytes, "Employee", emp.name, is_private=1)
+
+        frappe.get_doc(
+            {
+                "doctype": "Comment",
+                "comment_type": "Comment",
+                "reference_doctype": "Employee",
+                "reference_name": emp.name,
+                "content": RESUME_MARKER,
+            }
+        ).insert(ignore_permissions=True)
+
+        return getattr(file_doc, "file_url", None) or getattr(
+            file_doc, "file_name", None
+        )
+
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            f"Experience Letter generation failed for {emp.name}",
+        )
+        return None
 
 
 def compute_probation_end_date(joining_date, probation_period):
@@ -163,6 +252,11 @@ def calculate_probation_end_date(employee=None):
 
 
 def validate_probation_guards(doc, method=None):
+    if doc.status == "Left":
+        generate_and_attach_experience_letter(
+            employee_name=doc.name, letter_date=frappe.utils.today()
+        )
+
     if _current_user_is_bypasser():
         return None
     end_date = _safe_date(doc.custom_probation_end_date)

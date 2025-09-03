@@ -150,6 +150,9 @@ doc_events = {
         "before_insert": "hrms_assignments.custom_script.employee.employee.before_insert",
         "validate": "hrms_assignments.custom_script.employee.employee.validate_probation_guards",
     },
+    "Employee Separation": {
+        "on_submit": "hrms_assignments.custom_script.employee_separation.employee_separation.before_submit"
+    },
 }
 
 # Scheduled Tasks
@@ -174,7 +177,8 @@ doc_events = {
 # }
 
 scheduler_events = {
-    "daily": ["hrms_assignments.scheduled.employee.run_daily_probation_reminders"]
+    "daily": ["hrms_assignments.scheduled.employee.run_daily_probation_reminders"],
+    "cron": {"*/5 * * * *": ["hrms_assignments.scheduled.employee.mark_as_left"]},
 }
 
 # Testing
