@@ -55,6 +55,20 @@ Arguments are passed as **None**, causing errors.
 
   - **Experience Letter Generation Upon Exit** When the employee is marked as Left, the Experience Letter is generated and auto-attached to the said employee, stating the essential information like tenure, department and other employee related detail in a professional format.
 
+---
+
+## Assignment 3: Salary Structure & Payroll
+
+### **Objectives**
+
+- **Creating a Salary Structure with Basic, HRA, Special Allowance, Provident Fund (PF) and Professional Tax.** Added these components through the Salary Component doctype.
+
+- **Add both earnings and deductions** Added these earnings and deductions in 'Salary Structure' doctype and then assigned employees these structures through 'Salary Structure Assignment' for running Payroll through the 'Payroll Entry' doctype, which finally created Salary Slips for the said time period for the employees which got fetched upon clicking the 'Get Employees'.
+
+- **Implementing Payroll Entry for multiple employees** Inbuilt feature
+
+- **Generating a custom payroll slip format with branding** Created a proper print format called Custom Salary Slip, which shows necessary details regarding the payroll of the said employee with deductions and earnings consolidated and within a single page.
+
 ### 📄 License
 
 **MIT**
