@@ -69,6 +69,18 @@ Arguments are passed as **None**, causing errors.
 
 - **Generating a custom payroll slip format with branding** Created a proper print format called Custom Salary Slip, which shows necessary details regarding the payroll of the said employee with deductions and earnings consolidated and within a single page.
 
+---
+
+## Assignment 4: Tax Regime Implementation
+
+### **Objectives**
+
+- **Implementing support for Old and New Tax Regimes** Created two separate documents inside of Income Tax Slab called 'Old Tax Regime' and 'New Tax Regime'. These will allow us to calculate salaries based on whether the old regime or the new regime has been picked by the employee during their master creation (or any subsequent edits to the already created employee document inside of Employee doctype)
+
+- **Added a custom field inside of Employee** Added a new custom field inside of Employee doctype called 'Preferred Tax Regime' and linked it to the Income Tax Slab doctype mentioned above. Now wherever the employee is a link field , we can easily get their tax preference. This is the field which will be auto-fetched inside of Salary Structure Assignment, which itself wil further take care of all tax based calculations for the chosen regime. Now when we run payroll, system auto-picks the correct income tax slab and deductions happen accordingly.
+
+- **Tax Comparison Report (Old Regime vs New Regime)**
+
 ### 📄 License
 
 **MIT**

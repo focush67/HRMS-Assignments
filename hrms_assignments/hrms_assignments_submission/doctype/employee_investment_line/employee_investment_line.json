@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-03 17:21:01.652772",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_code",
+  "subcategory",
+  "amount_declared",
+  "amount_verified",
+  "proof",
+  "remarks",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_code",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Section Code",
+   "options": "\n80C\n80CCD(1)\n80CCD(1B)\n80CCD(2)\n80E\n80G_50_limit\n80G_100_limit\n80G_50_no_limit\n80G_100_no_limit\n80TTA\n24B\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "subcategory",
+   "fieldtype": "Data",
+   "label": "Subcategory"
+  },
+  {
+   "fieldname": "amount_declared",
+   "fieldtype": "Currency",
+   "label": "Amount Declared"
+  },
+  {
+   "fieldname": "amount_verified",
+   "fieldtype": "Currency",
+   "label": "Amount Verified"
+  },
+  {
+   "fieldname": "proof",
+   "fieldtype": "Attach",
+   "label": "Proof"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nDeclared\nAccepted\nPartially Accepted\nRejected",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-03 17:23:51.581184",
+ "modified_by": "Administrator",
+ "module": "HRMS Assignments Submission",
+ "name": "Employee Investment Line",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
