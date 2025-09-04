@@ -42,14 +42,6 @@ frappe.query_reports["Tax Deductions Comparison"] = {
       },
     },
     {
-      fieldname: "regime",
-      label: "Regime",
-      fieldtype: "Select",
-      options: ["Both", "Old", "New"],
-      default: "Both",
-      reqd: 1,
-    },
-    {
       fieldname: "use_verified_exemptions_only",
       label: "Use Verified Exemptions Only",
       fieldtype: "Check",

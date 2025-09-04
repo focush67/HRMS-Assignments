@@ -1,5 +1,45 @@
+# -*- coding: utf-8 -*-
 import frappe
 from frappe.utils import flt, getdate
+
+"""
+Tax Deductions Comparison (backend)
+
+What this implementation does (per your latest specs):
+
+- Uses Employee CTC as the ONLY income source (annual). No Salary Slip/Structure used.
+  - Reads common fieldnames: cost_to_company, ctc, annual_ctc, total_ctc, ctc_annual, ctc_yearly, ctc_year
+  - Monthly fallbacks: ctc_monthly, monthly_ctc, ctc_per_month (×12)
+
+- OLD Regime (custom, as you supplied):
+  - Standard deduction = ₹50,000
+  - VI-A exemptions (proofs/declarations) subtracted if payroll_period is provided
+  - Slabs:
+      0 – 2,50,000      : 0%
+      2,50,001 – 5,00,000: 5% (APPLY ONLY IF taxable_income > 5,00,000)
+      5,00,001 – 10,00,000: 20%
+      10,00,001 – ∞       : 30%
+  - 87A behavior reflected via the condition above: if taxable ≤ 5L → the 5% slab is effectively neutralised.
+  - Cess = 4% on slab tax after rebate/condition.
+
+- NEW Regime (custom, as you supplied):
+  - Standard deduction = ₹60,000
+  - Exemptions ignored
+  - Slabs:
+      0 – 4,00,000        : 0%
+      4,00,001 – 8,00,000 : 5%
+      8,00,001 – 12,00,000: 10%
+      12,00,001 – 16,00,000: 15%
+      16,00,001 – 20,00,000: 20%
+      20,00,001 – 24,00,000: 25%
+      24,00,001 – 9,99,99,999: 30%
+  - (No 87A applied here per your data.)
+  - Cess = 4%
+
+- Report filters expected on the JS side:
+  company (reqd), as_on (reqd), payroll_period (optional for exemptions), employee (optional),
+  regime (Both/Old/New), annualize (Check), use_verified_exemptions_only (Check), debug (Check).
+"""
 
 # ============================== PUBLIC API ==============================
 
@@ -16,33 +56,26 @@ def execute(filters=None):
 
     rows = []
     for emp in employees:
-        base = _compute_base(emp, filters)
-        # base has: gross_monthly, gross_annual, non_taxable_annual, prof_tax_annual, nps_employer_annual, debug_gross_source
+        base = _compute_base_from_employee_ctc(emp, filters)
+        exemptions_total = _get_exemptions(emp.name, filters)
 
-        exemptions_total = _get_exemptions(
-            emp.name, filters
-        )  # VI-A proofs/decl (Old only by design)
         regimes = ["Old", "New"] if filters.regime == "Both" else [filters.regime]
-
         for regime in regimes:
-            calc = _compute_tax_for_regime(
-                company=filters.company,
-                as_on=filters.as_on,
-                regime=regime,
-                gross_annual=base["gross_annual"],
-                non_taxable_annual=base["non_taxable_annual"],
-                nps_employer_annual=base[
-                    "nps_employer_annual"
-                ],  # allowed in BOTH regimes
-                prof_tax_annual=base["prof_tax_annual"],  # allowed only in OLD regime
-                exemptions_vi_a_annual=exemptions_total,  # VI-A only in OLD
-                annualize=bool(int(filters.annualize or 0)),
-                want_breakdown=bool(int(filters.get("debug") or 0)),
-            )
-
-            # If you want a per-regime popup for single employee, uncomment:
-            # if filters.get("employee") and bool(int(filters.get("debug") or 0)):
-            #     _show_breakdown_msg(emp, regime, calc)
+            if regime == "Old":
+                calc = _compute_tax_old_custom(
+                    gross_annual=base["gross_annual"],
+                    exemptions_vi_a_annual=exemptions_total,
+                    annualize=bool(int(filters.annualize or 0)),
+                    want_breakdown=bool(int(filters.get("debug") or 0)),
+                )
+                calc["debug_slab_name"] = "Old Regime (custom)"
+            else:
+                calc = _compute_tax_new_custom(
+                    gross_annual=base["gross_annual"],
+                    annualize=bool(int(filters.annualize or 0)),
+                    want_breakdown=bool(int(filters.get("debug") or 0)),
+                )
+                calc["debug_slab_name"] = "New Regime (custom)"
 
             row = [
                 emp.name,
@@ -50,7 +83,7 @@ def execute(filters=None):
                 regime,
                 calc["gross_annual"],
                 calc["std_deduction"],
-                calc["exemptions_total"],  # VI-A used (Old), else 0
+                calc["exemptions_total"],
                 calc["taxable_income"],
                 calc["slab_tax"],
                 calc["rebate_applied"],
@@ -60,25 +93,9 @@ def execute(filters=None):
                 calc["effective_rate_pct"],
             ]
 
-            if bool(int(filters.get("debug") or 0)):
-                row.extend(
-                    [
-                        calc.get("debug_slab_name") or "",
-                        base.get("gross_monthly"),
-                        base.get("non_taxable_annual"),
-                        base.get("nps_employer_annual"),
-                        base.get("prof_tax_annual"),
-                        base.get("debug_gross_source"),
-                        len(calc.get("bands", []) or []),
-                    ]
-                )
-
             rows.append(row)
 
     return columns, rows
-
-
-# ============================== HELPERS ==============================
 
 
 def _normalize_filters(filters):
@@ -88,6 +105,7 @@ def _normalize_filters(filters):
         frappe.throw("Please select an As On date.")
     if not filters.get("regime"):
         filters.regime = "Both"
+
     filters.annualize = int(filters.get("annualize") or 1)
     filters.use_verified_exemptions_only = int(
         filters.get("use_verified_exemptions_only") or 1
@@ -210,7 +228,7 @@ def _get_columns(filters):
                     "label": "DEBUG: Gross Source",
                     "fieldname": "debug_gross_src",
                     "fieldtype": "Data",
-                    "width": 180,
+                    "width": 200,
                 },
                 {
                     "label": "DEBUG: Bands",
@@ -235,23 +253,18 @@ def _get_employees(filters):
     )
 
 
-# ---------- Employee CTC helpers ----------
-
-
 def _field_exists(doctype, fieldname):
     try:
-        return any(df.fieldname == fieldname for df in frappe.get_meta(doctype).fields)
+        meta = frappe.get_meta(doctype)
+        return any(df.fieldname == fieldname for df in meta.fields)
     except Exception:
         return False
 
 
 def _extract_ctc_from_employee(emp_name):
     """
-    Reads common CTC field names from Employee and returns:
-      { "annual": <float>, "source_field": "<fieldname>" }
-    Checks (first that exists and >0):
-      Annual fields: cost_to_company, ctc, annual_ctc, total_ctc, ctc_annual, ctc_yearly, ctc_year
-      Monthly fields: ctc_monthly, monthly_ctc, ctc_per_month (×12)
+    Return {"annual": float, "source_field": str or None}
+    Annual prioritized, then monthly×12.
     """
     doc = frappe.get_doc("Employee", emp_name)
 
@@ -270,11 +283,7 @@ def _extract_ctc_from_employee(emp_name):
             if val > 0:
                 return {"annual": val, "source_field": f}
 
-    monthly_fields = [
-        "ctc_monthly",
-        "monthly_ctc",
-        "ctc_per_month",
-    ]
+    monthly_fields = ["ctc_monthly", "monthly_ctc", "ctc_per_month"]
     for f in monthly_fields:
         if _field_exists("Employee", f):
             val = flt(getattr(doc, f, 0) or 0)
@@ -284,195 +293,25 @@ def _extract_ctc_from_employee(emp_name):
     return {"annual": 0.0, "source_field": None}
 
 
-# ---------- BASE COMPUTATION (with Salary Slip -> Employee CTC -> Structure/SSA) ----------
-
-
-def _compute_base(emp, filters):
-    """
-    Priority:
-      (A) Latest Salary Slip (posting_date <= as_on): best, computed gross
-      (B) Employee CTC (custom field on Employee): next best
-      (C) Salary Structure / SSA: last resort
-
-    Also computes:
-      - non_taxable_annual via Salary Component flag 'exempted_from_income_tax' (if exists)
-      - prof_tax_annual from deductions named 'Professional Tax' or 'PT'
-      - nps_employer_annual from earnings whose component name contains 'nps' & 'employer'
-    """
-    as_on = filters.as_on
-    gross_monthly = 0.0
-    non_taxable_monthly = 0.0
-    prof_tax_monthly = 0.0
-    nps_employer_monthly = 0.0
-    gross_source = "—"
-
-    # (A) Latest Salary Slip
-    slip = frappe.get_all(
-        "Salary Slip",
-        filters={
-            "employee": emp.name,
-            "company": filters.company,
-            "posting_date": ["<=", as_on],
-            "docstatus": ["in", [0, 1]],  # draft or submitted
-        },
-        fields=["name", "gross_pay"],
-        order_by="posting_date desc, creation desc",
-        limit=1,
-    )
-    if slip:
-        slip = slip[0]
-        slip_name = slip.name
-        slip_earn = frappe.get_all(
-            "Salary Detail",
-            filters={
-                "parenttype": "Salary Slip",
-                "parent": slip_name,
-                "parentfield": "earnings",
-            },
-            fields=["salary_component", "amount"],
-        )
-        slip_ded = frappe.get_all(
-            "Salary Detail",
-            filters={
-                "parenttype": "Salary Slip",
-                "parent": slip_name,
-                "parentfield": "deductions",
-            },
-            fields=["salary_component", "amount"],
-        )
-
-        gross_monthly = flt(slip.gross_pay or 0)
-        if gross_monthly <= 0:
-            gross_monthly = sum(flt(x.amount) for x in slip_earn or [])
-
-        if _has_field("Salary Component", "exempted_from_income_tax") and slip_earn:
-            sc_map = _get_salary_component_flags(
-                [e.salary_component for e in slip_earn], "exempted_from_income_tax"
-            )
-            for e in slip_earn:
-                if sc_map.get(e.salary_component):
-                    non_taxable_monthly += flt(e.amount)
-
-        for d in slip_ded or []:
-            comp = (d.salary_component or "").lower()
-            if "professional tax" in comp or comp == "pt":
-                prof_tax_monthly += flt(d.amount)
-
-        for e in slip_earn or []:
-            comp = (e.salary_component or "").lower()
-            if "nps" in comp and "employer" in comp:
-                nps_employer_monthly += flt(e.amount)
-
-        gross_source = f"Salary Slip: {slip_name}"
-
-    # (B) Employee CTC fallback (annual -> monthly)
-    if gross_monthly <= 0:
-        ctc = _extract_ctc_from_employee(emp.name)
-        if ctc["annual"] > 0:
-            gross_monthly = ctc["annual"] / 12.0  # normalize to monthly
-            gross_source = f"Employee CTC ({ctc['source_field']})"
-
-    # (C) Salary Structure / SSA last resort
-    if gross_monthly <= 0:
-        ssa = frappe.get_all(
-            "Salary Structure Assignment",
-            filters={"employee": emp.name, "docstatus": 1},
-            fields=["name", "base", "salary_structure", "from_date"],
-            order_by="from_date desc",
-            limit=1,
-        )
-        if ssa:
-            ssa = ssa[0]
-            ss_name = ssa.get("salary_structure")
-
-            earnings = []
-            if ss_name:
-                earnings = frappe.get_all(
-                    "Salary Detail",
-                    filters={
-                        "parenttype": "Salary Structure",
-                        "parent": ss_name,
-                        "parentfield": "earnings",
-                    },
-                    fields=["salary_component", "amount"],
-                )
-            if earnings:
-                gross_monthly = sum(flt(x.amount) for x in earnings)
-
-                if _has_field("Salary Component", "exempted_from_income_tax"):
-                    sc_map = _get_salary_component_flags(
-                        [e.salary_component for e in earnings],
-                        "exempted_from_income_tax",
-                    )
-                    for e in earnings:
-                        if sc_map.get(e.salary_component):
-                            non_taxable_monthly += flt(e.amount)
-
-                for e in earnings:
-                    comp = (e.salary_component or "").lower()
-                    if "nps" in comp and "employer" in comp:
-                        nps_employer_monthly += flt(e.amount)
-
-                gross_source = f"Salary Structure: {ss_name}"
-
-            elif flt(ssa.get("base")) > 0:
-                gross_monthly = flt(ssa.get("base"))
-                gross_source = f"SSA.base ({ssa.name})"
-
-            if ss_name:
-                deductions = frappe.get_all(
-                    "Salary Detail",
-                    filters={
-                        "parenttype": "Salary Structure",
-                        "parent": ss_name,
-                        "parentfield": "deductions",
-                    },
-                    fields=["salary_component", "amount"],
-                )
-                for d in deductions or []:
-                    comp = (d.salary_component or "").lower()
-                    if "professional tax" in comp or comp == "pt":
-                        prof_tax_monthly += flt(d.amount)
-
-    months = 12 if bool(int(filters.annualize or 0)) else 1
+def _compute_base_from_employee_ctc(emp, filters):
+    ctc = _extract_ctc_from_employee(emp.name)
+    gross_annual = flt(ctc["annual"], 2)
     base = {
-        "gross_monthly": flt(gross_monthly, 2),
-        "gross_annual": flt(gross_monthly * months, 2),
-        "non_taxable_annual": flt(non_taxable_monthly * months, 2),
-        "prof_tax_annual": flt(prof_tax_monthly * months, 2),
-        "nps_employer_annual": flt(nps_employer_monthly * months, 2),
-        "debug_gross_source": gross_source,
+        "gross_annual": gross_annual,
+        "debug_gross_source": (
+            f"Employee CTC ({ctc['source_field']})"
+            if ctc["source_field"]
+            else "Employee CTC: not found"
+        ),
     }
-
     if bool(int(filters.get("debug") or 0)):
         frappe.msgprint(
-            f"{emp.employee_name or emp.name}: Gross from {gross_source} → {base['gross_annual']}"
+            f"{emp.employee_name or emp.name}: Gross from {base['debug_gross_source']} → {frappe.utils.fmt_money(gross_annual, currency=None)}"
         )
-
     return base
 
 
-def _get_salary_component_flags(names, fieldname):
-    """Return a dict {component_name: bool} for a given boolean field on Salary Component."""
-    out = {}
-    if not names:
-        return out
-    unique = list({n for n in names if n})
-    if not _has_field("Salary Component", fieldname):
-        return out
-    comps = frappe.get_all(
-        "Salary Component", filters={"name": ["in", unique]}, fields=["name", fieldname]
-    )
-    for c in comps:
-        out[c.name] = int(getattr(c, fieldname, 0)) == 1
-    return out
-
-
 def _get_exemptions(employee, filters):
-    """
-    VI-A exemptions via Proofs (preferred) or Declaration (if allowed).
-    Returned as an annual amount used ONLY in OLD regime.
-    """
     payroll_period = filters.get("payroll_period")
     if not payroll_period:
         return 0.0
@@ -515,97 +354,57 @@ def _get_exemptions(employee, filters):
     return 0.0
 
 
-# ============================== TAX COMPUTATION ==============================
-
-
-def _compute_tax_for_regime(
-    company,
-    as_on,
-    regime,
-    gross_annual,
-    non_taxable_annual,
-    nps_employer_annual,
-    prof_tax_annual,
-    exemptions_vi_a_annual,
-    annualize=True,
-    want_breakdown=False,
+def _compute_tax_old_custom(
+    gross_annual, exemptions_vi_a_annual, annualize=True, want_breakdown=False
 ):
-    slab_name = _find_regime_slab(company, as_on, regime)
-    if not slab_name:
-        empty = _empty_calc(gross_annual, 0.0)
-        empty["debug_slab_name"] = None
-        empty["bands"] = []
-        return empty
-
-    slab_doc = frappe.get_doc("Income Tax Slab", slab_name)
-
-    # Standard deduction per slab schema (if present)
-    std_deduction = 0.0
-    if _has_field("Income Tax Slab", "allow_tax_exemption") and _has_field(
-        "Income Tax Slab", "standard_tax_exemption_amount"
-    ):
-        if int(getattr(slab_doc, "allow_tax_exemption", 0)) == 1:
-            std_deduction = flt(getattr(slab_doc, "standard_tax_exemption_amount", 0.0))
-
-    # Optional fields
-    cess_pct = flt(_safe_get(slab_doc, ["education_cess_percent", "education_cess"], 0))
-    rebate_thr = flt(
-        _safe_get(slab_doc, ["rebate_applicable_below", "rebate_threshold"], 0)
+    std_deduction = 50000.0
+    taxable_income = max(
+        0.0, flt(gross_annual) - std_deduction - flt(exemptions_vi_a_annual)
     )
-    rebate_amt = flt(_safe_get(slab_doc, ["rebate_amount", "rebate_u_s_87a_amount"], 0))
 
-    # Start with taxable base after removing non-taxable earnings
-    taxable_base = max(0.0, flt(gross_annual) - flt(non_taxable_annual))
-
-    # Always-allowed deductions
-    deductions_common = std_deduction + flt(nps_employer_annual)
-
-    # Old-regime-only deductions
-    deductions_old_only = flt(prof_tax_annual) + flt(exemptions_vi_a_annual)
-
-    total_deductions = deductions_common + (
-        deductions_old_only if regime == "Old" else 0.0
-    )
-    taxable_income = max(0.0, taxable_base - total_deductions)
-
-    # Slab tax calc
-    child_table = _detect_slab_child_table(slab_doc)
-    slab_tax = 0.0
     bands = []
-    for r in sorted(child_table, key=lambda x: flt(getattr(x, "from_amount", 0) or 0)):
-        lower = flt(getattr(r, "from_amount", 0) or 0)
-        upper_val = getattr(r, "to_amount", None)
-        upper = flt(upper_val) if (upper_val not in (None, "")) else 9e18
-        if taxable_income <= lower:
-            continue
-        band = min(taxable_income, upper) - lower
-        if band <= 0:
-            continue
-        rate = flt(getattr(r, "percent", None) or getattr(r, "rate", None) or 0.0)
-        fixed = flt(
-            getattr(r, "fixed_amount", None) or getattr(r, "tax_amount", None) or 0.0
-        )
-        band_tax = (band * rate / 100.0) + fixed
-        slab_tax += band_tax
+
+    def _add(from_amt, to_amt, rate_pct):
+        nonlocal bands
+        upper = to_amt if to_amt is not None else 9e18
+        if taxable_income <= from_amt:
+            return 0.0
+        slice_amt = min(taxable_income, upper) - from_amt
+        if slice_amt <= 0:
+            return 0.0
+        tax = slice_amt * (rate_pct / 100.0)
         if want_breakdown:
             bands.append(
                 {
-                    "from": lower,
-                    "to": (None if upper >= 9e18 else upper),
-                    "slice": flt(band, 2),
-                    "rate_pct": rate,
-                    "fixed": fixed,
-                    "tax": flt(band_tax, 2),
+                    "from": flt(from_amt, 2),
+                    "to": (None if to_amt is None else flt(to_amt, 2)),
+                    "slice": flt(slice_amt, 2),
+                    "rate_pct": flt(rate_pct, 2),
+                    "fixed": 0.0,
+                    "tax": flt(tax, 2),
                 }
             )
+        return tax
+
+    slab_tax = 0.0
+    slab_tax += _add(0, 250000, 0)
+
+    if taxable_income > 500000:
+        slab_tax += _add(250000, 500000, 5)
+    else:
+        pass
+
+    slab_tax += _add(500000, 1000000, 20)
+
+    slab_tax += _add(1000000, None, 30)
 
     rebate_applied = 0.0
-    if rebate_thr and taxable_income <= rebate_thr:
-        rebate_applied = min(slab_tax, rebate_amt)
-        slab_tax = max(0.0, slab_tax - rebate_applied)
+    if taxable_income <= 500000:
+        rebate_applied = flt(slab_tax, 2)
+        slab_tax = 0.0
 
-    cess_amount = flt(slab_tax * (cess_pct / 100.0)) if cess_pct else 0.0
-    net_tax = flt(slab_tax + cess_amount)
+    cess_amount = flt(slab_tax * 0.04, 2) if slab_tax > 0 else 0.0
+    net_tax = flt(slab_tax + cess_amount, 2)
 
     months = 12 if annualize else 1
     monthly_tds = flt(net_tax / months, 2)
@@ -616,7 +415,7 @@ def _compute_tax_for_regime(
     return {
         "gross_annual": flt(gross_annual, 2),
         "std_deduction": flt(std_deduction, 2),
-        "exemptions_total": flt(exemptions_vi_a_annual if regime == "Old" else 0.0, 2),
+        "exemptions_total": flt(exemptions_vi_a_annual, 2),
         "taxable_income": flt(taxable_income, 2),
         "slab_tax": flt(slab_tax, 2),
         "rebate_applied": flt(rebate_applied, 2),
@@ -624,171 +423,67 @@ def _compute_tax_for_regime(
         "net_tax": flt(net_tax, 2),
         "monthly_tds": monthly_tds,
         "effective_rate_pct": effective_rate_pct,
-        "debug_slab_name": slab_name,
-        "bands": bands,
+        "bands": bands if want_breakdown else [],
     }
 
 
-def _empty_calc(gross_annual, exemptions):
-    taxable = max(0.0, flt(gross_annual) - flt(exemptions))
+def _compute_tax_new_custom(gross_annual, annualize=True, want_breakdown=False):
+    std_deduction = 60000.0
+    taxable_income = max(0.0, flt(gross_annual) - std_deduction)
+
+    bands = []
+
+    def _add(from_amt, to_amt, rate_pct):
+        nonlocal bands
+        upper = to_amt if to_amt is not None else 9_999_999_99.0
+        if taxable_income <= from_amt:
+            return 0.0
+        slice_amt = min(taxable_income, upper) - from_amt
+        if slice_amt <= 0:
+            return 0.0
+        tax = slice_amt * (rate_pct / 100.0)
+        if want_breakdown:
+            bands.append(
+                {
+                    "from": flt(from_amt, 2),
+                    "to": (None if to_amt is None else flt(to_amt, 2)),
+                    "slice": flt(slice_amt, 2),
+                    "rate_pct": flt(rate_pct, 2),
+                    "fixed": 0.0,
+                    "tax": flt(tax, 2),
+                }
+            )
+        return tax
+
+    slab_tax = 0.0
+    slab_tax += _add(0, 400000, 0)
+    slab_tax += _add(400000, 800000, 5)
+    slab_tax += _add(800000, 1200000, 10)
+    slab_tax += _add(1200000, 1600000, 15)
+    slab_tax += _add(1600000, 2000000, 20)
+    slab_tax += _add(2000000, 2400000, 25)
+    slab_tax += _add(2400000, None, 30)
+    rebate_applied = 0.0
+
+    cess_amount = flt(slab_tax * 0.04, 2) if slab_tax > 0 else 0.0
+    net_tax = flt(slab_tax + cess_amount, 2)
+
+    months = 12 if annualize else 1
+    monthly_tds = flt(net_tax / months, 2)
+    effective_rate_pct = (
+        flt((net_tax / gross_annual * 100.0), 2) if gross_annual > 0 else 0.0
+    )
+
     return {
         "gross_annual": flt(gross_annual, 2),
-        "std_deduction": 0.0,
-        "exemptions_total": flt(exemptions, 2),
-        "taxable_income": flt(taxable, 2),
-        "slab_tax": 0.0,
-        "rebate_applied": 0.0,
-        "cess_amount": 0.0,
-        "net_tax": 0.0,
-        "monthly_tds": 0.0,
-        "effective_rate_pct": 0.0,
-        "debug_slab_name": None,
-        "bands": [],
+        "std_deduction": flt(std_deduction, 2),
+        "exemptions_total": 0.0,
+        "taxable_income": flt(taxable_income, 2),
+        "slab_tax": flt(slab_tax, 2),
+        "rebate_applied": flt(rebate_applied, 2),
+        "cess_amount": flt(cess_amount, 2),
+        "net_tax": flt(net_tax, 2),
+        "monthly_tds": monthly_tds,
+        "effective_rate_pct": effective_rate_pct,
+        "bands": bands if want_breakdown else [],
     }
-
-
-# ============================== DETECTION / META ==============================
-
-
-def _find_regime_slab(company, as_on, regime):
-    regime_filters = []
-    if _has_field("Income Tax Slab", "tax_regime"):
-        regime_filters.append({"tax_regime": regime})
-    elif _has_field("Income Tax Slab", "regime"):
-        regime_filters.append({"regime": regime})
-    elif _has_field("Income Tax Slab", "is_new_regime"):
-        regime_filters.append({"is_new_regime": 1 if regime == "New" else 0})
-    else:
-        regime_filters.append({})
-
-    for rf in regime_filters:
-        name = frappe.db.get_value(
-            "Income Tax Slab",
-            {"company": company, "disabled": 0, "effective_from": ["<=", as_on], **rf},
-            "name",
-            order_by="effective_from desc",
-        )
-        if name:
-            return name
-
-    return frappe.db.get_value(
-        "Income Tax Slab",
-        {"company": company, "disabled": 0, "effective_from": ["<=", as_on]},
-        "name",
-        order_by="effective_from desc",
-    )
-
-
-def _detect_slab_child_table(slab_doc):
-    if hasattr(slab_doc, "slabs") and slab_doc.slabs:
-        return slab_doc.slabs
-    if hasattr(slab_doc, "tax_slabs") and slab_doc.tax_slabs:
-        return slab_doc.tax_slabs
-    if hasattr(slab_doc, "income_tax_slabs") and slab_doc.income_tax_slabs:
-        return slab_doc.income_tax_slabs
-    return []
-
-
-def _has_field(doctype, fieldname):
-    try:
-        meta = frappe.get_meta(doctype)
-        return any(df.fieldname == fieldname for df in meta.fields)
-    except Exception:
-        return False
-
-
-def _safe_get(doc, keys, default=None):
-    for k in keys:
-        if hasattr(doc, k):
-            val = getattr(doc, k)
-            if val not in (None, ""):
-                return val
-    return default
-
-
-# ============================== OPTIONAL UI POPUP ==============================
-
-
-def _show_breakdown_msg(emp, regime, calc):
-    bands = calc.get("bands") or []
-    if not bands:
-        html_rows = "<tr><td colspan='6' style='padding:6px'>No band-level breakdown available (no slabs matched or zero taxable income).</td></tr>"
-    else:
-        html_rows = ""
-        for b in bands:
-            to_display = (
-                "∞"
-                if b.get("to") in (None, "", 0)
-                else (
-                    frappe.utils.fmt_money(b["to"], currency=None)
-                    if isinstance(b["to"], (int, float))
-                    else b["to"]
-                )
-            )
-            html_rows += f"""
-            <tr>
-              <td style="padding:6px">{frappe.utils.fmt_money(b['from'], currency=None)}</td>
-              <td style="padding:6px">{to_display}</td>
-              <td style="padding:6px; text-align:right">{frappe.utils.fmt_money(b['slice'], currency=None)}</td>
-              <td style="padding:6px; text-align:right">{flt(b['rate_pct'], 2)}%</td>
-              <td style="padding:6px; text-align:right">{frappe.utils.fmt_money(b['fixed'], currency=None)}</td>
-              <td style="padding:6px; text-align:right">{frappe.utils.fmt_money(b['tax'], currency=None)}</td>
-            </tr>
-            """
-
-    total_row = f"""
-    <tr style="font-weight:600;border-top:1px solid #ddd">
-      <td colspan="5" style="padding:6px">Slab Tax</td>
-      <td style="padding:6px; text-align:right">{frappe.utils.fmt_money(calc['slab_tax'], currency=None)}</td>
-    </tr>
-    <tr>
-      <td colspan="5" style="padding:6px">Rebate u/s 87A</td>
-      <td style="padding:6px; text-align:right">{frappe.utils.fmt_money(calc['rebate_applied'], currency=None)}</td>
-    </tr>
-    <tr>
-      <td colspan="5" style="padding:6px">Cess</td>
-      <td style="padding:6px; text-align:right">{frappe.utils.fmt_money(calc['cess_amount'], currency=None)}</td>
-    </tr>
-    <tr style="font-weight:700;border-top:1px solid #ddd">
-      <td colspan="5" style="padding:6px">Net Tax</td>
-      <td style="padding:6px; text-align:right">{frappe.utils.fmt_money(calc['net_tax'], currency=None)}</td>
-    </tr>
-    """
-
-    head = f"""
-      <div style="margin-bottom:8px">
-        <b>Employee:</b> {frappe.utils.escape_html(emp.employee_name or emp.name)} &nbsp;|&nbsp;
-        <b>Regime:</b> {regime} &nbsp;|&nbsp;
-        <b>Slab:</b> {frappe.utils.escape_html(calc.get('debug_slab_name') or '—')}
-      </div>
-      <div style="margin-bottom:6px">
-        <b>Gross (Annual):</b> {frappe.utils.fmt_money(calc['gross_annual'], currency=None)} &nbsp;|&nbsp;
-        <b>Std. Deduction:</b> {frappe.utils.fmt_money(calc['std_deduction'], currency=None)} &nbsp;|&nbsp;
-        <b>Exemptions Used:</b> {frappe.utils.fmt_money(calc['exemptions_total'], currency=None)}
-      </div>
-    """
-
-    html = f"""
-    {head}
-    <table style="width:100%; border-collapse:collapse; font-size:12px">
-      <thead>
-        <tr style="border-bottom:1px solid #ddd">
-          <th style="text-align:left; padding:6px">From</th>
-          <th style="text-align:left; padding:6px">To</th>
-          <th style="text-align:right; padding:6px">Taxed Slice</th>
-          <th style="text-align:right; padding:6px">Rate %</th>
-          <th style="text-align:right; padding:6px">Fixed</th>
-          <th style="text-align:right; padding:6px">Tax</th>
-        </tr>
-      </thead>
-      <tbody>
-        {html_rows}
-        {total_row}
-      </tbody>
-    </table>
-    """
-    frappe.msgprint(
-        html,
-        title=f"Tax Breakdown — {emp.employee_name or emp.name} ({regime})",
-        indicator="blue",
-    )
