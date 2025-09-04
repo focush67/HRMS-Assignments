@@ -71,15 +71,21 @@ Arguments are passed as **None**, causing errors.
 
 ---
 
-## Assignment 4: Tax Regime Implementation
+### Assignment 4: Tax Regime Implementation
 
 ### **Objectives**
 
-- **Implementing support for Old and New Tax Regimes** Created two separate documents inside of Income Tax Slab called 'Old Tax Regime' and 'New Tax Regime'. These will allow us to calculate salaries based on whether the old regime or the new regime has been picked by the employee during their master creation (or any subsequent edits to the already created employee document inside of Employee doctype)
+- **Implementing support for Old and New Tax Regimes though Salary Structures** Created Old Tax Regime and New Tax Regime documents inside of Income Tax Slab doctype and entered proper data as per the law for auto-calculation of Income Tax. It also involved creation of a Salary Component for Income Tax, which was also created and enabled. After this, for eligible tax payers, income tax calculation was automatically done by the system and it could be seen inside the Salary Slip.
 
-- **Added a custom field inside of Employee** Added a new custom field inside of Employee doctype called 'Preferred Tax Regime' and linked it to the Income Tax Slab doctype mentioned above. Now wherever the employee is a link field , we can easily get their tax preference. This is the field which will be auto-fetched inside of Salary Structure Assignment, which itself wil further take care of all tax based calculations for the chosen regime. Now when we run payroll, system auto-picks the correct income tax slab and deductions happen accordingly.
+- **Added custom field inside of Employee doctype** Employees have the option to choose their tax regimes by changing the 'Tax Regime Preference' field in their master. Upon doing so, subsequent salary slips will calculate deductions and exemptions based on the aforementioned selected regime. System auto-picks the correct salary structure based on employee's chosen regime.
 
-- **Tax Comparison Report (Old Regime vs New Regime)**
+- **Created Tax Deduction Comparison Report (Excluding Investment Declarations)** Tax Deduction Comparison Report shows the difference in payable tax for a given employee with a given CTC and Gross Pay.
+
+---
+
+### Assignment 5: Customization
+
+- **Employee Investment Declaration** Created a custom doctype called 'Employee Investment Declaration' where employee files their investments and other information. Currently only handled Section 80C and 80D exemptions. Upon locking, they are auto-fetched while running payroll, and are mentioned as exemptions by the system through customization.
 
 ### 📄 License
 
