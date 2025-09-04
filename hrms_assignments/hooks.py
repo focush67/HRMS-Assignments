@@ -1,7 +1,9 @@
 app_name = "hrms_assignments"
 app_title = "HRMS Assignments Submission"
 app_publisher = "Sparsh Verma"
-app_description = "This application is a submission to the HRMS assignment given from GirmanTech"
+app_description = (
+    "This application is a submission to the HRMS assignment given from GirmanTech"
+)
 app_email = "sparshv70@gmail.com"
 app_license = "mit"
 
@@ -43,7 +45,7 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Job Applicant": "custom_script/job_applicant/job_applicant.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -137,13 +139,11 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+    "Job Applicant": {
+        "validate": "hrms_assignments.custom_script.job_applicant.job_applicant.validate_job_applicant"
+    }
+}
 
 # Scheduled Tasks
 # ---------------
@@ -241,4 +241,3 @@ app_license = "mit"
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
