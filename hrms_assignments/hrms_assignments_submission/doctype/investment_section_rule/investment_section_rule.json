@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-03 17:50:43.202064",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "rule_name",
+  "section",
+  "is_active",
+  "effective_from",
+  "effective_upto",
+  "computation_type",
+  "absolute_cap",
+  "notes",
+  "variants"
+ ],
+ "fields": [
+  {
+   "fieldname": "rule_name",
+   "fieldtype": "Data",
+   "label": "Rule Name"
+  },
+  {
+   "fieldname": "section",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Section",
+   "options": "80C\n80D",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From"
+  },
+  {
+   "fieldname": "effective_upto",
+   "fieldtype": "Date",
+   "label": "Effective Upto"
+  },
+  {
+   "fieldname": "computation_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Computation Type",
+   "options": "ABSOLUTE_CAP",
+   "reqd": 1
+  },
+  {
+   "fieldname": "absolute_cap",
+   "fieldtype": "Currency",
+   "label": "Absolute Cap",
+   "options": "150000\n"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "variants",
+   "fieldtype": "Table",
+   "label": "Variants",
+   "options": "Investment Rule Variant"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-04 11:11:27.521672",
+ "modified_by": "Administrator",
+ "module": "HRMS Assignments Submission",
+ "name": "Investment Section Rule",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

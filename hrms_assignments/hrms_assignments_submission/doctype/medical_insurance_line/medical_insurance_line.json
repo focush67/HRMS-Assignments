@@ -1,0 +1,89 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-03 17:24:05.352444",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "insured_for",
+  "is_a_senior_citizen",
+  "payment_mode",
+  "amount_declared",
+  "amount_verified",
+  "preventive_health_checkup",
+  "proof",
+  "remarks",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "insured_for",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Insured For",
+   "options": "\nSelf\nSpouse\nChildren\nParents",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_a_senior_citizen",
+   "fieldtype": "Check",
+   "label": "Is a Senior Citizen"
+  },
+  {
+   "fieldname": "payment_mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment Mode",
+   "options": "\nCash\nCashless",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amount_declared",
+   "fieldtype": "Currency",
+   "label": "Amount Declared"
+  },
+  {
+   "fieldname": "amount_verified",
+   "fieldtype": "Currency",
+   "label": "Amount Verified"
+  },
+  {
+   "default": "0",
+   "fieldname": "preventive_health_checkup",
+   "fieldtype": "Check",
+   "label": "Preventive Health Checkup"
+  },
+  {
+   "fieldname": "proof",
+   "fieldtype": "Attach",
+   "label": "Proof"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nDeclared\nAccepted\nPartially Accepted\nRejected",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-03 17:41:21.102059",
+ "modified_by": "Administrator",
+ "module": "HRMS Assignments Submission",
+ "name": "Medical Insurance Line",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

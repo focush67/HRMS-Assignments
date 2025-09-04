@@ -1,0 +1,173 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-03 16:57:53.349108",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "amended_from",
+  "section_break_fdsf",
+  "employee",
+  "employee_name",
+  "fiscal_year",
+  "column_break_pxmo",
+  "tax_regime",
+  "declaration_status",
+  "total_declared",
+  "total_verified",
+  "section_break_ns3b",
+  "notes",
+  "verified_by",
+  "column_break_7kpd",
+  "locked_on",
+  "verified_on",
+  "section_break_gvh7",
+  "investments",
+  "medical_insurance"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_fdsf",
+   "fieldtype": "Section Break",
+   "label": "General Information"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Employee Investment Declaration",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name"
+  },
+  {
+   "fieldname": "fiscal_year",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Fiscal Year",
+   "options": "25-26\n26-27\n27-28",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.custom_preferred_tax_regime",
+   "fetch_if_empty": 1,
+   "fieldname": "tax_regime",
+   "fieldtype": "Link",
+   "label": "Tax Regime",
+   "options": "Income Tax Slab"
+  },
+  {
+   "fieldname": "declaration_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Declaration Status",
+   "options": "\nDraft\nSubmitted\nVerified\nLocked",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_declared",
+   "fieldtype": "Currency",
+   "label": "Total Declared",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_verified",
+   "fieldtype": "Currency",
+   "label": "Total Verified",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "verified_by",
+   "fieldtype": "Link",
+   "label": "Verified By",
+   "options": "User"
+  },
+  {
+   "fieldname": "locked_on",
+   "fieldtype": "Datetime",
+   "label": "Locked On"
+  },
+  {
+   "fieldname": "investments",
+   "fieldtype": "Table",
+   "label": "Investments",
+   "options": "Employee Investment Line"
+  },
+  {
+   "fieldname": "medical_insurance",
+   "fieldtype": "Table",
+   "label": "Medical Insurance",
+   "options": "Medical Insurance Line"
+  },
+  {
+   "fieldname": "column_break_pxmo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_ns3b",
+   "fieldtype": "Section Break",
+   "label": "Notes and Verification"
+  },
+  {
+   "fieldname": "column_break_7kpd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_gvh7",
+   "fieldtype": "Section Break",
+   "label": "Investments and Medical Insurance"
+  },
+  {
+   "fieldname": "verified_on",
+   "fieldtype": "Datetime",
+   "label": "Verified On"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-04 11:05:29.156469",
+ "modified_by": "Administrator",
+ "module": "HRMS Assignments Submission",
+ "name": "Employee Investment Declaration",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
