@@ -45,7 +45,10 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Job Applicant": "custom_script/job_applicant/job_applicant.js"}
+doctype_js = {
+    "Job Applicant": "custom_script/job_applicant/job_applicant.js",
+    "Employee": "custom_script/employee/employee.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -142,7 +145,14 @@ doctype_js = {"Job Applicant": "custom_script/job_applicant/job_applicant.js"}
 doc_events = {
     "Job Applicant": {
         "validate": "hrms_assignments.custom_script.job_applicant.job_applicant.validate_job_applicant"
-    }
+    },
+    "Employee": {
+        "before_insert": "hrms_assignments.custom_script.employee.employee.before_insert",
+        "validate": "hrms_assignments.custom_script.employee.employee.validate_probation_guards",
+    },
+    "Employee Separation": {
+        "on_submit": "hrms_assignments.custom_script.employee_separation.employee_separation.before_submit"
+    },
 }
 
 # Scheduled Tasks
@@ -165,6 +175,11 @@ doc_events = {
 # 		"hrms_assignments.tasks.monthly"
 # 	],
 # }
+
+scheduler_events = {
+    "daily": ["hrms_assignments.scheduled.employee.run_daily_probation_reminders"],
+    "cron": {"*/5 * * * *": ["hrms_assignments.scheduled.employee.mark_as_left"]},
+}
 
 # Testing
 # -------
