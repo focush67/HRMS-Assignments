@@ -55,6 +55,38 @@ Arguments are passed as **None**, causing errors.
 
   - **Experience Letter Generation Upon Exit** When the employee is marked as Left, the Experience Letter is generated and auto-attached to the said employee, stating the essential information like tenure, department and other employee related detail in a professional format.
 
+---
+
+## Assignment 3: Salary Structure & Payroll
+
+### **Objectives**
+
+- **Creating a Salary Structure with Basic, HRA, Special Allowance, Provident Fund (PF) and Professional Tax.** Added these components through the Salary Component doctype.
+
+- **Add both earnings and deductions** Added these earnings and deductions in 'Salary Structure' doctype and then assigned employees these structures through 'Salary Structure Assignment' for running Payroll through the 'Payroll Entry' doctype, which finally created Salary Slips for the said time period for the employees which got fetched upon clicking the 'Get Employees'.
+
+- **Implementing Payroll Entry for multiple employees** Inbuilt feature
+
+- **Generating a custom payroll slip format with branding** Created a proper print format called Custom Salary Slip, which shows necessary details regarding the payroll of the said employee with deductions and earnings consolidated and within a single page.
+
+---
+
+### Assignment 4: Tax Regime Implementation
+
+### **Objectives**
+
+- **Implementing support for Old and New Tax Regimes though Salary Structures** Created Old Tax Regime and New Tax Regime documents inside of Income Tax Slab doctype and entered proper data as per the law for auto-calculation of Income Tax. It also involved creation of a Salary Component for Income Tax, which was also created and enabled. After this, for eligible tax payers, income tax calculation was automatically done by the system and it could be seen inside the Salary Slip.
+
+- **Added custom field inside of Employee doctype** Employees have the option to choose their tax regimes by changing the 'Tax Regime Preference' field in their master. Upon doing so, subsequent salary slips will calculate deductions and exemptions based on the aforementioned selected regime. System auto-picks the correct salary structure based on employee's chosen regime.
+
+- **Created Tax Deduction Comparison Report (Excluding Investment Declarations)** Tax Deduction Comparison Report shows the difference in payable tax for a given employee with a given CTC and Gross Pay.
+
+---
+
+### Assignment 5: Customization
+
+- **Employee Investment Declaration** Created a custom doctype called 'Employee Investment Declaration' where employee files their investments and other information. Currently only handled Section 80C and 80D exemptions. Upon locking, they are auto-fetched while running payroll, and are mentioned as exemptions by the system through customization.
+
 ### 📄 License
 
 **MIT**

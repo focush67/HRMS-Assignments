@@ -1,0 +1,53 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-04 10:45:01.994747",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "beneficiary_group",
+  "senior_only",
+  "absolute_cap",
+  "preventive_health_checkup_cap"
+ ],
+ "fields": [
+  {
+   "fieldname": "beneficiary_group",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Beneficiary Group",
+   "options": "Self\nSpouse\nChildren\nParents",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "senior_only",
+   "fieldtype": "Check",
+   "label": "Senior Only"
+  },
+  {
+   "fieldname": "absolute_cap",
+   "fieldtype": "Currency",
+   "label": "Absolute Cap"
+  },
+  {
+   "default": "0",
+   "fieldname": "preventive_health_checkup_cap",
+   "fieldtype": "Currency",
+   "label": "Preventive Health Checkup Cap"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-04 10:58:29.244103",
+ "modified_by": "Administrator",
+ "module": "HRMS Assignments Submission",
+ "name": "Investment Rule Variant",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
