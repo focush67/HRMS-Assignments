@@ -287,15 +287,6 @@ def validate_probation_guards(doc, method=None):
         return None
 
     has_manager_override = _has_rm_early_end_comment(doc)
-    if stage_changed_to_confirmed:
-        if not _is_exempted(doc):
-            has_evaluation = _has_submitted_probation_evaluation(doc.name)
-            if not has_evaluation:
-                frappe.throw(
-                    "Cannot confirm employee without a <b>submitted Probation Evaluation</b>. "
-                    "Please ensure the evaluation is created and submitted.",
-                    title="Confirmation Blocked",
-                )
 
     if stage_changed_to_confirmed and not has_manager_override:
         frappe.throw(

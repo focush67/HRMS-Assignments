@@ -24,7 +24,7 @@ frappe.query_reports["Tax Deductions Comparison"] = {
       label: "Payroll Period",
       fieldtype: "Link",
       options: "Payroll Period",
-      reqd: 0, // optional: only used to read exemptions
+      reqd: 0,
       get_query: () => {
         const company = frappe.query_report.get_filter_value("company");
         return company ? { filters: { company } } : {};

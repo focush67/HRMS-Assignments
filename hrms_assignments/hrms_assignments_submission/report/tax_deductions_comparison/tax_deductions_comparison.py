@@ -1,53 +1,10 @@
-# -*- coding: utf-8 -*-
 import frappe
 from frappe.utils import flt, getdate
-
-"""
-Tax Deductions Comparison (backend)
-
-What this implementation does (per your latest specs):
-
-- Uses Employee CTC as the ONLY income source (annual). No Salary Slip/Structure used.
-  - Reads common fieldnames: cost_to_company, ctc, annual_ctc, total_ctc, ctc_annual, ctc_yearly, ctc_year
-  - Monthly fallbacks: ctc_monthly, monthly_ctc, ctc_per_month (×12)
-
-- OLD Regime (custom, as you supplied):
-  - Standard deduction = ₹50,000
-  - VI-A exemptions (proofs/declarations) subtracted if payroll_period is provided
-  - Slabs:
-      0 – 2,50,000      : 0%
-      2,50,001 – 5,00,000: 5% (APPLY ONLY IF taxable_income > 5,00,000)
-      5,00,001 – 10,00,000: 20%
-      10,00,001 – ∞       : 30%
-  - 87A behavior reflected via the condition above: if taxable ≤ 5L → the 5% slab is effectively neutralised.
-  - Cess = 4% on slab tax after rebate/condition.
-
-- NEW Regime (custom, as you supplied):
-  - Standard deduction = ₹60,000
-  - Exemptions ignored
-  - Slabs:
-      0 – 4,00,000        : 0%
-      4,00,001 – 8,00,000 : 5%
-      8,00,001 – 12,00,000: 10%
-      12,00,001 – 16,00,000: 15%
-      16,00,001 – 20,00,000: 20%
-      20,00,001 – 24,00,000: 25%
-      24,00,001 – 9,99,99,999: 30%
-  - (No 87A applied here per your data.)
-  - Cess = 4%
-
-- Report filters expected on the JS side:
-  company (reqd), as_on (reqd), payroll_period (optional for exemptions), employee (optional),
-  regime (Both/Old/New), annualize (Check), use_verified_exemptions_only (Check), debug (Check).
-"""
-
-# ============================== PUBLIC API ==============================
 
 
 def execute(filters=None):
     filters = frappe._dict(filters or {})
     _normalize_filters(filters)
-
     columns = _get_columns(filters)
     employees = _get_employees(filters)
     if not employees:
@@ -66,16 +23,12 @@ def execute(filters=None):
                     gross_annual=base["gross_annual"],
                     exemptions_vi_a_annual=exemptions_total,
                     annualize=bool(int(filters.annualize or 0)),
-                    want_breakdown=bool(int(filters.get("debug") or 0)),
                 )
-                calc["debug_slab_name"] = "Old Regime (custom)"
             else:
                 calc = _compute_tax_new_custom(
                     gross_annual=base["gross_annual"],
                     annualize=bool(int(filters.annualize or 0)),
-                    want_breakdown=bool(int(filters.get("debug") or 0)),
                 )
-                calc["debug_slab_name"] = "New Regime (custom)"
 
             row = [
                 emp.name,
@@ -110,7 +63,6 @@ def _normalize_filters(filters):
     filters.use_verified_exemptions_only = int(
         filters.get("use_verified_exemptions_only") or 1
     )
-    filters.debug = int(filters.get("debug") or 0)
     filters.as_on = getdate(filters.as_on)
 
 
@@ -191,53 +143,6 @@ def _get_columns(filters):
             "width": 120,
         },
     ]
-    if bool(int(filters.get("debug") or 0)):
-        cols.extend(
-            [
-                {
-                    "label": "DEBUG: Slab",
-                    "fieldname": "debug_slab",
-                    "fieldtype": "Data",
-                    "width": 180,
-                },
-                {
-                    "label": "DEBUG: Base (Monthly)",
-                    "fieldname": "debug_base",
-                    "fieldtype": "Currency",
-                    "width": 130,
-                },
-                {
-                    "label": "DEBUG: Non-Tax Earn (Ann)",
-                    "fieldname": "debug_nontax",
-                    "fieldtype": "Currency",
-                    "width": 150,
-                },
-                {
-                    "label": "DEBUG: NPS ER (Ann)",
-                    "fieldname": "debug_nps",
-                    "fieldtype": "Currency",
-                    "width": 140,
-                },
-                {
-                    "label": "DEBUG: PT (Ann)",
-                    "fieldname": "debug_pt",
-                    "fieldtype": "Currency",
-                    "width": 120,
-                },
-                {
-                    "label": "DEBUG: Gross Source",
-                    "fieldname": "debug_gross_src",
-                    "fieldtype": "Data",
-                    "width": 200,
-                },
-                {
-                    "label": "DEBUG: Bands",
-                    "fieldname": "debug_band_count",
-                    "fieldtype": "Int",
-                    "width": 90,
-                },
-            ]
-        )
     return cols
 
 
@@ -262,10 +167,6 @@ def _field_exists(doctype, fieldname):
 
 
 def _extract_ctc_from_employee(emp_name):
-    """
-    Return {"annual": float, "source_field": str or None}
-    Annual prioritized, then monthly×12.
-    """
     doc = frappe.get_doc("Employee", emp_name)
 
     annual_fields = [
@@ -304,10 +205,6 @@ def _compute_base_from_employee_ctc(emp, filters):
             else "Employee CTC: not found"
         ),
     }
-    if bool(int(filters.get("debug") or 0)):
-        frappe.msgprint(
-            f"{emp.employee_name or emp.name}: Gross from {base['debug_gross_source']} → {frappe.utils.fmt_money(gross_annual, currency=None)}"
-        )
     return base
 
 
