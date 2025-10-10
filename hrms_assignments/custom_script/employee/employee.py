@@ -38,6 +38,9 @@ def generate_and_attach_experience_letter(employee_name=None, letter_date=None):
     if _already_attached(emp.name):
         return None
 
+    if emp.status != "Left":
+        return None
+
     if not getattr(emp, "relieving_date", None):
         emp.relieving_date = getdate(letter_date or nowdate())
 

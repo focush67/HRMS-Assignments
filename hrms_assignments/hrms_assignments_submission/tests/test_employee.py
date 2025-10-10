@@ -1,5 +1,6 @@
 import frappe
 import unittest
+from unittest.mock import patch
 from frappe.utils import nowdate, add_days
 
 
@@ -262,3 +263,141 @@ class TestEmployee(unittest.TestCase):
         self.assertEqual(_extract_days_or_months("12 weeks"), ("days", 84))
         self.assertEqual(_extract_days_or_months(None), (None, None))
         self.assertEqual(_extract_days_or_months(""), (None, None))
+
+    def test_safe_date_parses_correctly(self):
+        from hrms_assignments.custom_script.employee.employee import _safe_date
+        from frappe.utils import getdate
+
+        self.assertEqual(_safe_date("2024-06-15"), getdate("2024-06-15"))
+        self.assertIsNone(_safe_date(None))
+        self.assertIsNone(_safe_date(""))
+        self.assertIsNot(_safe_date("invalid-date"), True)
+
+    def test_contains_all_keywords_works_correctly(self):
+        from hrms_assignments.custom_script.employee.employee import (
+            _contains_all_keywords,
+        )
+
+        self.assertTrue(_contains_all_keywords("End Probation Early"))
+        self.assertFalse(_contains_all_keywords("End Early"))
+        self.assertFalse(_contains_all_keywords("Probation End"))
+        self.assertTrue(
+            _contains_all_keywords("Please End Probation Early for good performance")
+        )
+        self.assertFalse(_contains_all_keywords("This is a test comment"))
+        self.assertFalse(_contains_all_keywords(""))
+        self.assertFalse(_contains_all_keywords(None))
+        self.assertTrue(_contains_all_keywords("END the probation EARLY"))
+        self.assertTrue(_contains_all_keywords("End, probation, early."))
+
+    def test_bypasser_works(self):
+        from hrms_assignments.custom_script.employee.employee import (
+            _current_user_is_bypasser,
+        )
+
+        with patch("frappe.get_roles", return_value=["Bypasser", "Employee"]):
+            self.assertFalse(_current_user_is_bypasser("Administrator"))
+
+        with patch("frappe.get_roles", return_value=["Employee", "Bypasser"]):
+            self.assertTrue(_current_user_is_bypasser("bypasser_user"))
+
+        with patch("frappe.get_roles", return_value=["Employee"]):
+            self.assertFalse(_current_user_is_bypasser("normal_user"))
+
+        with patch("frappe.get_roles", return_value=["Employee", "HR Manager"]):
+            self.assertFalse(_current_user_is_bypasser("hr_manager_user"))
+
+        with patch("frappe.get_roles", return_value=[""]):
+            self.assertFalse(_current_user_is_bypasser("no_role_user"))
+
+        with patch("frappe.get_roles", side_effect=Exception("DB Error")):
+            self.assertFalse(_current_user_is_bypasser("faulty_user"))
+
+    def test_experience_letter_creation_and_attachment(self):
+        from hrms_assignments.custom_script.employee.employee import (
+            generate_and_attach_experience_letter,
+            RESUME_MARKER,
+        )
+
+        emp = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "first_name": "LetterUser",
+                "company": frappe.defaults.get_global_default("company")
+                or "The Testing Company Private Limited",
+                "status": "Left",
+                "gender": "Prefer not to say",
+                "cell_number": "1234567890",
+                "date_of_birth": "1990-01-01",
+                "date_of_joining": "2020-01-01",
+                "relieving_date": "2024-09-10",
+            }
+        ).insert()
+
+        with (
+            patch(
+                "hrms_assignments.custom_script.employee.employee.frappe.get_print",
+                return_value="<html>Mock PDF HTML</html",
+            ),
+            patch(
+                "hrms_assignments.custom_script.employee.employee.get_pdf",
+                return_value=b"%PDF-Mock%",
+            ),
+            patch(
+                "hrms_assignments.custom_script.employee.employee.save_file",
+                return_value=frappe._dict(
+                    file_url="/private/files/mock_experience_letter.pdf"
+                ),
+            ),
+        ):
+            file_url = generate_and_attach_experience_letter(emp.name)
+            self.assertTrue(".pdf" in file_url)
+            comment = frappe.get_value(
+                "Comment",
+                {
+                    "reference_doctype": "Employee",
+                    "reference_name": emp.name,
+                    "content": RESUME_MARKER,
+                },
+                "name",
+            )
+            self.assertIsNotNone(comment)
+
+    def test_experience_letter_not_generated_for_active_employee(self):
+        from hrms_assignments.custom_script.employee.employee import (
+            generate_and_attach_experience_letter,
+        )
+
+        emp = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "first_name": "ActiveLetterUser",
+                "company": frappe.defaults.get_global_default("company")
+                or "The Testing Company Private Limited",
+                "status": "Active",
+                "gender": "Prefer not to say",
+                "cell_number": "1234567890",
+                "date_of_birth": "1990-01-01",
+                "date_of_joining": "2020-01-01",
+            }
+        ).insert()
+
+        with (
+            patch(
+                "hrms_assignments.custom_script.employee.employee.frappe.get_print",
+                return_value="<html>mock</html>",
+            ),
+            patch(
+                "hrms_assignments.custom_script.employee.employee.get_pdf",
+                return_value=b"PDF",
+            ),
+            patch(
+                "hrms_assignments.custom_script.employee.employee.save_file",
+                return_value=frappe._dict(
+                    file_url="/private/files/mock_experience_letter.pdf"
+                ),
+            ),
+        ):
+
+            result = generate_and_attach_experience_letter(emp.name)
+            self.assertIsNone(result)
